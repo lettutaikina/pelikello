@@ -6,10 +6,6 @@ import io
 import time
 import re
 
-# assume the first available port instead of hard-coded port address
-#ser=serial.Serial('COM3',timeout=1000)
-ser=serial.Serial(port_list.comports()[0].device,timeout=1)
-
 
 # This parses the input using regexp. Only valid inputs are processed.
 def output_data(data):
@@ -65,6 +61,15 @@ def output_data(data):
             infobar.write(gameStatus)
 
 # Reading starts here. Can be stopped by Control-C
+try:
+    # assume the first available port instead of hard-coded port address
+    #ser=serial.Serial('COM3',timeout=1000)
+    ser=serial.Serial(port_list.comports()[0].device,timeout=1)
+except Exception as ex:
+    print(ex)
+    time.sleep(5) # to show error message before window is closed
+    exit()
+
 buffer = ""
 try:
     while True: 
@@ -83,12 +88,13 @@ try:
 
 
 except Exception as ex:
-    print(str(ex))
+    print(ex)
 except KeyboardInterrupt:
     print("KeyboardInterrupt")
+    pass
  
 # We try to close the port, but for some reason this does not work properly. The port
 # remains reserved until plugged in again. 
 ser.close()
-time.sleep(1)
+time.sleep(5) # to show error message before window is closed
 exit()
