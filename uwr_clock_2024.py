@@ -27,11 +27,11 @@ def output_data(data):
 
         goals_blue = parsed.group(3)
         with open ('maalitsininen.txt','w') as goalsblue:
-            goalsblue.write(goals_blue.lstrip('0'))
+            goalsblue.write(goals_blue.lstrip('0') or '0')
 
         goals_white = parsed.group(4)
         with open ('maalitvalkoinen.txt','w') as goalswhite:
-            goalswhite.write(goals_white.lstrip('0'))
+            goalswhite.write(goals_white.lstrip('0') or '0')
 
 
         RoundNr = parsed.group(6)
