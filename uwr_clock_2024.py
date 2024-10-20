@@ -1,74 +1,94 @@
 # -*- coding: UTF-8 -*-
 
 import serial
+import serial.tools.list_ports as port_list
 import io
+import time
+import re
 
-ser=serial.Serial('COM4',timeout=1000)
-#score=open('score.txt','w')
-#time=open('time.txt','w')
-#all2screen=open('all2screen.txt','w')
+# assume the first available port instead of hard-coded port address
+#ser=serial.Serial('COM3',timeout=1000)
+ser=serial.Serial(port_list.comports()[0].device,timeout=1)
 
-while True: #tämän voisi korvata jollakin IfNotAnyKeyPressed
-    rawdata=ser.readline()
-#    print(rawdata)      #testirivi
-#    print(rawdata[2:7]) #testirivi
-    rawdata_utf8=rawdata
-    gametime=rawdata_utf8[2:7].decode("ascii") 
-    gameStatus=rawdata_utf8[6:8].decode("ascii")
-    goals_blue=rawdata_utf8[8:10].decode("ascii")
-    goals_white=rawdata_utf8[11:13].decode("ascii")
 
-    RoundNr=rawdata_utf8[15:16].decode("ascii")
-    if RoundNr=='a':
-        RoundNr='1'
-    elif RoundNr=="b":
+# This parses the input using regexp. Only valid inputs are processed.
+def output_data(data):
+    print(data)
+    regex = ("^DA([ 0-9]{2}:[0-9]{2})(.{1})([0-9]{2})-([0-9]{2})([ 0-9]{2})(a|b)(b|w| )([ 0-9]{2}:[0-9]{2})" 
+             "([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})")
+    
+    parsed = re.search(regex, data)
+    if parsed:
+        #print(parsed.groups())
+
+        gametime = parsed.group(1)
+        with open ('pelikello.txt','w') as gametime2screen:
+            gametime2screen.write(gametime)
+
+        goals_blue = parsed.group(3)
+        with open ('maalitsininen.txt','w') as goalsblue:
+            goalsblue.write(goals_blue.lstrip('0'))
+
+        goals_white = parsed.group(4)
+        with open ('maalitvalkoinen.txt','w') as goalswhite:
+            goalswhite.write(goals_white.lstrip('0'))
+
+
+        RoundNr = parsed.group(6)
+        if RoundNr=='a':
+            RoundNr='1'
+        elif RoundNr=="b":
             RoundNr='2'
-    else:
+        else:
             RoundNr='E'
-    
-    colour=rawdata_utf8[16:17].decode("ascii")
+        with open ('erä.txt','w') as RoundNr2screen:
+            RoundNr2screen.write(RoundNr)
 
-#	jätetään nyt etunollien täyttö pois, mitä niillä tekee...       
-#    ## testataan onko maalimäärä 1- vai 2-numeroinen ja poistetaan tuloksesta etunolla
-    if goals_blue[0]=='0':
-        goals_blue=goals_blue[1]
-        if len(goals_blue) == 1:
-            goals_blue = "  " + goals_blue
-    if goals_white[0]=='0':
-        goals_white=goals_white[1]
 
-    with open ('erä.txt','w') as RoundNr2screen:
-        RoundNr2screen.write(RoundNr)
-    
-    gameStatus=gameStatus[1:]
-    
-    if colour=="w":
-        colour="val"
-    if colour=="b":
-        colour="sin"
-        
-    if gameStatus=="R":
-        gameStatus=""
-    if gameStatus=="E":
-        gameStatus=""
-    if gameStatus=="T":
-        gameStatus="Aikalisä " + colour
-    if gameStatus=="P":
-        gameStatus="Rangaistuspallo " + colour
+        gameStatus=parsed.group(2)
+        colour = parsed.group(7)
+        if colour=="w":
+            colour="val"
+        if colour=="b":
+            colour="sin"
+            
+        if gameStatus=="R":
+            gameStatus=""
+        if gameStatus=="E":
+            gameStatus=""
+        if gameStatus=="T":
+            gameStatus="Aikalisä " + colour
+        if gameStatus=="P":
+            gameStatus="Rangaistuspallo " + colour
 
-    with open ('pelikello.txt','w') as gametime2screen:
-        gametime2screen.write(gametime)
-    
-    with open ('maalitvalkoinen.txt','w') as goalswhite:
-        goalswhite.write(goals_white)
+        with open ('infobar.txt','w') as infobar:
+            infobar.write(gameStatus)
 
-    with open ('maalitsininen.txt','w') as goalsblue:
-        goalsblue.write(goals_blue)
+# Reading starts here. Can be stopped by Control-C
+buffer = ""
+try:
+    while True: 
+        # read in byte by byte, process when full buffer is received
+        byte = ser.read()
+        if byte:            
+            char = byte.decode("ascii", errors="ignore")
+            # datagram ends with newline
+            if char == '\n':
+                output_data(buffer)
+                buffer = ""
+            else:
+                buffer += char
+        else:
+            time.sleep(1) # wait for data
 
-    with open ('infobar.txt','w') as infobar:
-        infobar.write(gameStatus)
 
+except Exception as ex:
+    print(str(ex))
+except KeyboardInterrupt:
+    print("KeyboardInterrupt")
+ 
+# We try to close the port, but for some reason this does not work properly. The port
+# remains reserved until plugged in again. 
 ser.close()
-all2screen.close()
-#score.close()
-#time.close()
+time.sleep(1)
+exit()
