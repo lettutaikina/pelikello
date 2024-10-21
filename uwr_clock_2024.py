@@ -8,13 +8,12 @@ import re
 
 
 # This parses the input using regexp. Only valid inputs are processed.
+regex = re.compile("^DA([ 0-9]{2}:[0-9]{2})(.{1})([0-9]{2})-([0-9]{2})([ 0-9]{2})(a|b)(b|w| )([ 0-9]{2}:[0-9]{2})" 
+                   "([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})")
 def output_data(data):
-    print(data)
-    regex = ("^DA([ 0-9]{2}:[0-9]{2})(.{1})([0-9]{2})-([0-9]{2})([ 0-9]{2})(a|b)(b|w| )([ 0-9]{2}:[0-9]{2})" 
-             "([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})([ 0-9]{2}:[0-9]{2})")
-    
-    parsed = re.search(regex, data)
+    parsed = regex.search(data)
     if parsed:
+        print(data)
         #print(parsed.groups())
 
         gametime = parsed.group(1)
@@ -48,10 +47,12 @@ def output_data(data):
         if colour=="b":
             colour="sin"
             
+        if gameStatus==" ":
+            gameStatus="" # Waiting to be started
         if gameStatus=="R":
-            gameStatus=""
+            gameStatus="" # Game Running
         if gameStatus=="E":
-            gameStatus=""
+            gameStatus="Puoliaika"
         if gameStatus=="T":
             gameStatus="Aikalisä " + colour
         if gameStatus=="P":
@@ -60,7 +61,19 @@ def output_data(data):
         with open ('infobar.txt','w') as infobar:
             infobar.write(gameStatus)
 
-# Reading starts here. Can be stopped by Control-C
+        bluePenalties = []
+        for p in filter(lambda i: i != "  :00", [parsed.group(8),parsed.group(9),parsed.group(10)]):
+            bluePenalties.append(p.lstrip())
+        with open ('jäähytsininen.txt','w') as penaltiesblue:
+            penaltiesblue.write(', '.join(bluePenalties))
+
+        whitePenalties = []
+        for p in filter(lambda i: i != "  :00", [parsed.group(11),parsed.group(12),parsed.group(13)]):
+            whitePenalties.append(p.lstrip())
+        with open ('jäähytvalkoinen.txt','w') as penaltieswhite:
+            penaltieswhite.write(', '.join(whitePenalties))
+
+# Open comport
 try:
     # assume the first available port instead of hard-coded port address
     #ser=serial.Serial('COM3',timeout=1000)
@@ -70,6 +83,7 @@ except Exception as ex:
     time.sleep(5) # to show error message before window is closed
     exit()
 
+# Reading starts here. Can be stopped by Control-C
 buffer = ""
 try:
     while True: 
